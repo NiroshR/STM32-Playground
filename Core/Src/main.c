@@ -32,6 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define BOARD1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,12 +48,15 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-CAN_RxHeaderTypeDef rxHeader; //CAN Bus Transmit Header
-CAN_TxHeaderTypeDef txHeader; //CAN Bus Receive Header
-uint8_t canRX[8] = {0,0,0,0,0,0,0,0};  //CAN Bus Receive Buffer
-CAN_FilterTypeDef canfil; //CAN Bus Filter
-uint32_t canMailbox; //CAN Bus Mail box variable
+#ifdef BOARD1
+CAN_TxHeaderTypeDef txHeader;  // CAN Bus Receive Header
+#endif
+
+CAN_RxHeaderTypeDef rxHeader;  // CAN Bus Transmit Header
+CAN_FilterTypeDef canfil;      // CAN Bus Filter
+uint32_t canMailbox;           // CAN Bus Mail box variable
 char MSG[35] = {'\0'};
+uint8_t canRX[8] = {0, 0, 0, 0, 0, 0, 0, 0};  // CAN Bus Receive Buffer
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -119,16 +123,19 @@ int main(void)
   canfil.FilterActivation = ENABLE;
   canfil.SlaveStartFilterBank = 14;
 
-  txHeader.DLC = 8; // Number of bites to be transmitted max- 8
+#ifdef BOARD1
+  txHeader.DLC = 8;  // Number of bites to be transmitted max- 8
   txHeader.IDE = CAN_ID_STD;
   txHeader.RTR = CAN_RTR_DATA;
   txHeader.StdId = 0x030;
   txHeader.ExtId = 0x02;
   txHeader.TransmitGlobalTime = DISABLE;
+#endif
 
-  HAL_CAN_ConfigFilter(&hcan,&canfil); //Initialize CAN Filter
-  HAL_CAN_Start(&hcan); //Initialize CAN Bus
-  HAL_CAN_ActivateNotification(&hcan,CAN_IT_RX_FIFO0_MSG_PENDING);// Initialize CAN Bus Rx Interrupt
+  HAL_CAN_ConfigFilter(&hcan, &canfil);  // Initialize CAN Filter
+  HAL_CAN_Start(&hcan);                  // Initialize CAN Bus
+  HAL_CAN_ActivateNotification(
+      &hcan, CAN_IT_RX_FIFO0_MSG_PENDING);  // Initialize CAN Bus Rx Interrupt
 
   /* USER CODE END 2 */
 
@@ -142,10 +149,13 @@ int main(void)
     // Flash the LED to show that functionality is working. PC13 is named
     // ONBOARD_LED
     // tutorial: https://microcontrollerslab.com/stm32-blue-pill-gpio-pins-stm32cube-ide-led-blinking-tutorial/
-
-    uint8_t csend[] = {0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00}; // Tx Buffer
-    uint8_t ret = HAL_CAN_AddTxMessage(&hcan,&txHeader,csend,&canMailbox); // Send Message
+#ifdef BOARD1
+    // Tx Buffer
+    uint8_t csend[] = {0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    // Send Message, we don't check return code for now.
+    HAL_CAN_AddTxMessage(&hcan, &txHeader, csend, &canMailbox);
     HAL_Delay(500);
+#endif
   }
   /* USER CODE END 3 */
 }
@@ -331,18 +341,25 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
-{
-	HAL_CAN_GetRxMessage(hcan1, CAN_RX_FIFO0, &rxHeader, canRX); //Receive CAN bus message to canRX buffer
-	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);// toggle PA3 LED
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1) {
+  // Receive CAN bus message to canRX buffer
+  HAL_CAN_GetRxMessage(hcan1, CAN_RX_FIFO0, &rxHeader, canRX);  
+
+#ifdef BOARD2
+  HAL_GPIO_TogglePin(ONBOARD_LED_GPIO_Port, ONBOARD_LED_Pin);
+
+  sprintf(MSG, "Recieved CAN message\r\n");
+  HAL_UART_Transmit(&huart1, (uint8_t *)MSG, sizeof(MSG), 100);
+#endif
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
-{
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+#ifdef BOARD1
   HAL_GPIO_TogglePin(ONBOARD_LED_GPIO_Port, ONBOARD_LED_Pin);
 
   sprintf(MSG, "Hello Dudes! Tracing X \r\n");
-  HAL_UART_Transmit(&huart1, MSG, sizeof(MSG), 100);
+  HAL_UART_Transmit(&huart1, (uint8_t *)MSG, sizeof(MSG), 100);
+#endif
 }
 /* USER CODE END 4 */
 
