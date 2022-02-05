@@ -124,7 +124,7 @@ int main(void)
   canfil.SlaveStartFilterBank = 14;
 
 #ifdef BOARD1
-  txHeader.DLC = 8;  // Number of bites to be transmitted max- 8
+  txHeader.DLC = 8;  // Number of bytes to be transmitted max- 8
   txHeader.IDE = CAN_ID_STD;
   txHeader.RTR = CAN_RTR_DATA;
   txHeader.StdId = 0x030;
